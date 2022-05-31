@@ -6,7 +6,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/syberpunkq/go_url_shortener/internal/app/handlers"
 )
+
+// func TestRouter(t *testing.T) {
+// 	r := router.New()
+// 	ts := httptest.NewServer(r)
+// 	defer ts.Close()
+// }
 
 func TestMyHandler(t *testing.T) {
 	type want struct {
@@ -41,12 +48,14 @@ func TestMyHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			method := http.MethodGet
+			handler := handlers.ShowHandler
 			if tt.method == "POST" {
 				method = http.MethodPost
+				handler = handlers.CreateHandler
 			}
 			request := httptest.NewRequest(method, tt.request, nil)
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(MyHandler)
+			h := http.HandlerFunc(handler)
 			h.ServeHTTP(w, request)
 			result := w.Result()
 			defer result.Body.Close()
