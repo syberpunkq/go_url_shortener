@@ -1,66 +1,60 @@
 package handlers
 
 import (
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
-	"github.com/syberpunkq/go_url_shortener/internal/app/handlers"
+	"github.com/stretchr/testify/require"
+	"github.com/syberpunkq/go_url_shortener/internal/app/storage"
 )
 
-// func TestRouter(t *testing.T) {
-// 	r := router.New()
-// 	ts := httptest.NewServer(r)
-// 	defer ts.Close()
-// }
+func NewRouter() chi.Router {
+	storage := storage.NewStorage()
+	handler := NewHandler(storage)
+	r := chi.NewRouter()
+	r.Get("/{id}", handler.ShowHandler)
+	r.Post("/", handler.CreateHandler)
+	return r
+}
 
-func TestMyHandler(t *testing.T) {
-	type want struct {
-		statusCode int
-		body       string
-	}
-	tests := []struct {
-		name    string
-		method  string
-		request string
-		want    want
-	}{
-		{
-			name:    "Post create short url",
-			method:  "POST",
-			request: "/",
-			want:    want{statusCode: 201, body: "http://localhost:8080/1"},
-		},
-		{
-			name:    "Get recieve long url by short",
-			method:  "GET",
-			request: "http://localhost:8080/1",
-			want:    want{statusCode: 307, body: ""},
-		},
-		{
-			name:    "Get invalid short url",
-			method:  "GET",
-			request: "http://localhost:8080/2",
-			want:    want{statusCode: 404, body: "No such url"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			method := http.MethodGet
-			handler := handlers.ShowHandler
-			if tt.method == "POST" {
-				method = http.MethodPost
-				handler = handlers.CreateHandler
-			}
-			request := httptest.NewRequest(method, tt.request, nil)
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(handler)
-			h.ServeHTTP(w, request)
-			result := w.Result()
-			defer result.Body.Close()
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
+	require.NoError(t, err)
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
-		})
-	}
+	client := http.Client{CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+
+	return resp, string(respBody)
+}
+
+func TestRouter(t *testing.T) {
+	r := NewRouter()
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	resp, body := testRequest(t, ts, "POST", "/", "http://ya.ru")
+	assert.Equal(t, http.StatusCreated, resp.StatusCode)
+	assert.Equal(t, "http://localhost:8080/1", body)
+
+	resp, body = testRequest(t, ts, "GET", "/1", "")
+	assert.Equal(t, http.StatusTemporaryRedirect, resp.StatusCode)
+	assert.Equal(t, resp.Header.Get("Location"), "http://ya.ru")
+	assert.Equal(t, "", body)
+
+	resp, body = testRequest(t, ts, "GET", "/2", "")
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, "No such url\n", body)
 }
