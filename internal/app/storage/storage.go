@@ -1,14 +1,31 @@
 package storage
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
-var dict = make(map[string]string)
-var currentIndex = 1
+type Storage struct {
+	dict         map[string]string
+	currentIndex int
+	mutex        *sync.RWMutex
+}
+
+func NewStorage() *Storage {
+	return &Storage{
+		dict:         make(map[string]string),
+		currentIndex: 1,
+		mutex:        &sync.RWMutex{},
+	}
+}
 
 // Search by short url
 // Returns long url and true if found
-func FindKey(key string) (string, bool) {
-	if value, ok := dict[key]; ok {
+func (s Storage) FindKey(key string) (string, bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	if value, ok := s.dict[key]; ok {
 		return value, true
 	} else {
 		return "", false
@@ -17,11 +34,14 @@ func FindKey(key string) (string, bool) {
 
 // Search by long url
 // Returns index and true if found
-func FindVal(val string) (string, bool) {
+func (s Storage) FindVal(val string) (string, bool) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	// Check if url already in dict
 	exists := false
 	index := "0"
-	for k, v := range dict {
+	for k, v := range s.dict {
 		if v == val {
 			exists = true
 			index = k
@@ -32,9 +52,12 @@ func FindVal(val string) (string, bool) {
 }
 
 // Adds key-value short-long url, returns index of it
-func Add(val string) string {
-	index := fmt.Sprint(currentIndex)
-	dict[index] = val
-	currentIndex++
+func (s *Storage) Add(val string) string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	index := fmt.Sprint(s.currentIndex)
+	s.dict[index] = val
+	s.currentIndex++
 	return index
 }

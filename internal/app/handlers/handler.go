@@ -9,12 +9,28 @@ import (
 	"github.com/syberpunkq/go_url_shortener/internal/app/storage"
 )
 
-// GET /{id}
-func ShowHandler(w http.ResponseWriter, r *http.Request) {
-	key := chi.URLParam(r, "id")
+type Storaging interface {
+	FindKey(key string) (string, bool)
+	FindVal(val string) (string, bool)
+	Add(val string) string
+}
 
+type Handler struct {
+	Storaging
+}
+
+func NewHandler(s *storage.Storage) *Handler {
+	return &Handler{
+		Storaging: storage.NewStorage(),
+	}
+}
+
+// GET /{id}
+func (h Handler) ShowHandler(w http.ResponseWriter, r *http.Request) {
+
+	key := chi.URLParam(r, "id")
 	// If value persists in dictionary - redirect
-	value, ok := storage.FindKey(key)
+	value, ok := h.Storaging.FindKey(key)
 	if ok {
 		w.Header().Set("Location", value)
 		w.WriteHeader(http.StatusTemporaryRedirect)
@@ -28,7 +44,7 @@ func ShowHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // POST /
-func CreateHandler(w http.ResponseWriter, r *http.Request) {
+func (h Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -38,9 +54,9 @@ func CreateHandler(w http.ResponseWriter, r *http.Request) {
 	url := string(body)
 
 	// If not exists - create new key-value pair
-	index, ok := storage.FindVal(url)
+	index, ok := h.Storaging.FindVal(url)
 	if !ok {
-		index = storage.Add(url)
+		index = h.Storaging.Add(url)
 	}
 
 	w.WriteHeader(http.StatusCreated)
