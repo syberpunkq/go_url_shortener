@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -13,10 +14,14 @@ import (
 func main() {
 
 	var stor *storage.Storage
+	var err error
 	config := config.NewConfig()
 
 	if config.FileStoragePath != "" {
-		stor = storage.FileStorage(config.FileStoragePath)
+		stor, err = storage.FileStorage(config.FileStoragePath)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		stor = storage.NewStorage()
 	}
@@ -26,7 +31,7 @@ func main() {
 	appRouter := chi.NewRouter()
 	appRouter.Get("/{id}", handlers.ShowHandler)
 	appRouter.Post("/", handlers.CreateHandler)
-	appRouter.Post("/api/shorten", handlers.ApiCreateHandler)
+	appRouter.Post("/api/shorten", handlers.APICreateHandler)
 
-	http.ListenAndServe(config.ServerAddress, appRouter)
+	http.ListenAndServe(config.ServerAddress, handlers.GzipHandle(appRouter))
 }

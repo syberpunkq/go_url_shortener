@@ -30,11 +30,11 @@ func NewStorage() *Storage {
 	}
 }
 
-func FileStorage(fileStoragePath string) *Storage {
+func FileStorage(fileStoragePath string) (*Storage, error) {
 	stor := NewStorage()
 	file, err := os.OpenFile(fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	dec := json.NewDecoder(file)
@@ -44,7 +44,7 @@ func FileStorage(fileStoragePath string) *Storage {
 		if err := dec.Decode(&e); err == io.EOF {
 			break
 		} else if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		stor.dict[e.Key] = e.Value
 	}
@@ -52,7 +52,7 @@ func FileStorage(fileStoragePath string) *Storage {
 	stor.fileStoragePath = fileStoragePath
 	file.Close()
 
-	return stor
+	return stor, nil
 }
 
 // Search by short url
@@ -88,7 +88,7 @@ func (s Storage) FindVal(val string) (string, bool) {
 }
 
 // Adds key-value short-long url, returns index of it
-func (s *Storage) Add(val string) string {
+func (s *Storage) Add(val string) (string, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -97,16 +97,21 @@ func (s *Storage) Add(val string) string {
 	s.currentIndex++
 
 	if s.fileStoragePath != "" {
-		s.FileAppend(index, val)
+		err := s.FileAppend(index, val)
+		if err != nil {
+			log.Print(err)
+			return "", err
+		}
 	}
-	return index
+	return index, nil
 }
 
-func (s *Storage) FileAppend(key string, value string) {
+func (s *Storage) FileAppend(key string, value string) error {
 	file, err := os.OpenFile(s.fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	encoder := json.NewEncoder(file)
 	encoder.Encode(Entity{Key: key, Value: value})
+	return nil
 }

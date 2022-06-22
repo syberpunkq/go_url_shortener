@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 	"os"
 )
 
@@ -13,8 +12,6 @@ type Config struct {
 }
 
 func NewConfig() (config *Config) {
-	os.Setenv("FILE_STORAGE_PATH", "storage.txt")
-
 	config = &Config{}
 
 	flag.StringVar(&config.ServerAddress, "a", ":8080", "port to listen on")
@@ -31,7 +28,6 @@ func NewConfig() (config *Config) {
 	}
 	fileStoragePath, ok := os.LookupEnv("FILE_STORAGE_PATH")
 	if ok {
-		fmt.Println("ENV fileStoragePath FOUND")
 		config.FileStoragePath = fileStoragePath
 	}
 
