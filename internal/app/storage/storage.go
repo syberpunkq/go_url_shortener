@@ -1,22 +1,58 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"sync"
 )
 
+type Entity struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type Storage struct {
-	dict         map[string]string
-	currentIndex int
-	mutex        *sync.RWMutex
+	dict            map[string]string
+	currentIndex    int
+	mutex           *sync.RWMutex
+	fileStoragePath string
 }
 
 func NewStorage() *Storage {
 	return &Storage{
-		dict:         make(map[string]string),
-		currentIndex: 1,
-		mutex:        &sync.RWMutex{},
+		dict:            make(map[string]string),
+		currentIndex:    1,
+		mutex:           &sync.RWMutex{},
+		fileStoragePath: "",
 	}
+}
+
+func FileStorage(fileStoragePath string) *Storage {
+	stor := NewStorage()
+	file, err := os.OpenFile(fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dec := json.NewDecoder(file)
+
+	for {
+		var e Entity
+		if err := dec.Decode(&e); err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+		stor.dict[e.Key] = e.Value
+	}
+
+	stor.fileStoragePath = fileStoragePath
+	file.Close()
+
+	return stor
 }
 
 // Search by short url
@@ -59,5 +95,18 @@ func (s *Storage) Add(val string) string {
 	index := fmt.Sprint(s.currentIndex)
 	s.dict[index] = val
 	s.currentIndex++
+
+	if s.fileStoragePath != "" {
+		s.FileAppend(index, val)
+	}
 	return index
+}
+
+func (s *Storage) FileAppend(key string, value string) {
+	file, err := os.OpenFile(s.fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+	encoder := json.NewEncoder(file)
+	encoder.Encode(Entity{Key: key, Value: value})
 }
