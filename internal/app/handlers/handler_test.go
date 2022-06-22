@@ -14,9 +14,11 @@ import (
 	"github.com/syberpunkq/go_url_shortener/internal/app/storage"
 )
 
+var baseURL = "http://localhost:8080"
+
 func NewRouter() chi.Router {
 	storage := storage.NewStorage()
-	handler := NewHandler(storage)
+	handler := NewHandler(storage, baseURL)
 	r := chi.NewRouter()
 	r.Get("/{id}", handler.ShowHandler)
 	r.Post("/", handler.CreateHandler)
