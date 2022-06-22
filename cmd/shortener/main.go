@@ -26,7 +26,7 @@ func main() {
 	appRouter := chi.NewRouter()
 	appRouter.Get("/{id}", handlers.ShowHandler)
 	appRouter.Post("/", handlers.CreateHandler)
-	appRouter.Post("/api/shorten", handlers.ApiCreateHandler)
+	appRouter.Post("/api/shorten", handlers.APICreateHandler)
 
-	http.ListenAndServe(config.ServerAddress, appRouter)
+	http.ListenAndServe(config.ServerAddress, handlers.GzipHandle(appRouter))
 }

@@ -1,1 +1,2 @@
 {"key":"1","value":"http://ya.ru"}
+{"key":"1","value":"http://ya1.ru"}

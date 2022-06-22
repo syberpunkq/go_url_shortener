@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +21,7 @@ func NewRouter() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/{id}", handler.ShowHandler)
 	r.Post("/", handler.CreateHandler)
-	r.Post("/api/shorten", handler.ApiCreateHandler)
+	r.Post("/api/shorten", handler.APICreateHandler)
 	return r
 }
 
