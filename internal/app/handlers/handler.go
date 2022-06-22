@@ -27,7 +27,7 @@ type Data struct {
 
 func NewHandler(s *storage.Storage, URL string) *Handler {
 	return &Handler{
-		Storaging: storage.NewStorage(),
+		Storaging: s,
 		BaseURL:   URL,
 	}
 }

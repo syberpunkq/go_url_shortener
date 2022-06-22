@@ -29,7 +29,6 @@ func NewRouter() chi.Router {
 func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string, json bool) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
 	if json {
-		fmt.Println("header is set")
 		req.Header.Set("Content-Type", "application/json")
 	}
 	require.NoError(t, err)
