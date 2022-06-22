@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +18,10 @@ type Storaging interface {
 
 type Handler struct {
 	Storaging
+}
+
+type Data struct {
+	Result string `json:"result"`
 }
 
 func NewHandler(s *storage.Storage) *Handler {
@@ -61,4 +66,36 @@ func (h Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, "http://localhost:8080/%s", index)
+}
+
+// POST /api/shorten
+func (h Handler) ApiCreateHandler(w http.ResponseWriter, r *http.Request) {
+	//recieves body {"url":"<some_url>"}
+	//returnes body {"result":"<shorten_url>"}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		panic(err)
+	}
+	url := data["url"].(string)
+
+	// If not exists - create new key-value pair
+	index, ok := h.Storaging.FindVal(url)
+	if !ok {
+		index = h.Storaging.Add(url)
+	}
+
+	result := Data{Result: fmt.Sprintf("http://localhost:8080/%s", index)}
+	json, err := json.Marshal(result)
+	if err != nil {
+		panic(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	fmt.Fprint(w, string(json))
 }
