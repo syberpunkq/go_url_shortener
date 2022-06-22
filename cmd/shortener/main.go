@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 
@@ -10,13 +11,22 @@ import (
 )
 
 func main() {
+	serverAddress, ok := os.LookupEnv("SERVER_ADDRESS")
+	if !ok {
+		serverAddress = ":8080"
+	}
+	baseURL, ok := os.LookupEnv("BASE_URL")
+	if !ok {
+		baseURL = "http://localhost:8080"
+	}
+
 	storage := storage.NewStorage()
-	handlers := handlers.NewHandler(storage)
+	handlers := handlers.NewHandler(storage, baseURL)
 
 	appRouter := chi.NewRouter()
 	appRouter.Get("/{id}", handlers.ShowHandler)
 	appRouter.Post("/", handlers.CreateHandler)
 	appRouter.Post("/api/shorten", handlers.ApiCreateHandler)
 
-	http.ListenAndServe(":8080", appRouter)
+	http.ListenAndServe(serverAddress, appRouter)
 }

@@ -17,6 +17,7 @@ type Storaging interface {
 }
 
 type Handler struct {
+	BaseURL string
 	Storaging
 }
 
@@ -24,9 +25,10 @@ type Data struct {
 	Result string `json:"result"`
 }
 
-func NewHandler(s *storage.Storage) *Handler {
+func NewHandler(s *storage.Storage, URL string) *Handler {
 	return &Handler{
 		Storaging: storage.NewStorage(),
+		BaseURL:   URL,
 	}
 }
 
@@ -65,7 +67,7 @@ func (h Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "http://localhost:8080/%s", index)
+	fmt.Fprintf(w, "%s/%s", h.BaseURL, index)
 }
 
 // POST /api/shorten
@@ -89,7 +91,7 @@ func (h Handler) ApiCreateHandler(w http.ResponseWriter, r *http.Request) {
 		index = h.Storaging.Add(url)
 	}
 
-	result := Data{Result: fmt.Sprintf("http://localhost:8080/%s", index)}
+	result := Data{Result: fmt.Sprintf("%s/%s", h.BaseURL, index)}
 	json, err := json.Marshal(result)
 	if err != nil {
 		panic(err)
