@@ -1,22 +1,58 @@
 package storage
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"sync"
 )
 
+type Entity struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type Storage struct {
-	dict         map[string]string
-	currentIndex int
-	mutex        *sync.RWMutex
+	dict            map[string]string
+	currentIndex    int
+	mutex           *sync.RWMutex
+	fileStoragePath string
 }
 
 func NewStorage() *Storage {
 	return &Storage{
-		dict:         make(map[string]string),
-		currentIndex: 1,
-		mutex:        &sync.RWMutex{},
+		dict:            make(map[string]string),
+		currentIndex:    1,
+		mutex:           &sync.RWMutex{},
+		fileStoragePath: "",
 	}
+}
+
+func FileStorage(fileStoragePath string) (*Storage, error) {
+	stor := NewStorage()
+	file, err := os.OpenFile(fileStoragePath, os.O_RDONLY|os.O_CREATE, 0777)
+	if err != nil {
+		return nil, err
+	}
+
+	dec := json.NewDecoder(file)
+
+	for {
+		var e Entity
+		if err := dec.Decode(&e); err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		stor.dict[e.Key] = e.Value
+	}
+
+	stor.fileStoragePath = fileStoragePath
+	file.Close()
+
+	return stor, nil
 }
 
 // Search by short url
@@ -52,12 +88,30 @@ func (s Storage) FindVal(val string) (string, bool) {
 }
 
 // Adds key-value short-long url, returns index of it
-func (s *Storage) Add(val string) string {
+func (s *Storage) Add(val string) (string, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	index := fmt.Sprint(s.currentIndex)
 	s.dict[index] = val
 	s.currentIndex++
-	return index
+
+	if s.fileStoragePath != "" {
+		err := s.FileAppend(index, val)
+		if err != nil {
+			log.Print(err)
+			return "", err
+		}
+	}
+	return index, nil
+}
+
+func (s *Storage) FileAppend(key string, value string) error {
+	file, err := os.OpenFile(s.fileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(file)
+	encoder.Encode(Entity{Key: key, Value: value})
+	return nil
 }
