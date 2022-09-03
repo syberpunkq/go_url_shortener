@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -114,6 +116,11 @@ func (h Handler) APICreateHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(json))
 }
 
+// Post api/
+func (h Handler) ApiShowUrls(w http.ResponseWriter, r *http.Request) {
+
+}
+
 type gzipWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
@@ -125,6 +132,16 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 
 func (h Handler) GzipHandle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//Set cookie
+
+		fmt.Println(r.Cookie("user_id"))
+		id := []byte(fmt.Sprint(1))
+		key := []byte("secret")
+		h := hmac.New(sha256.New, key)
+		h.Write(id)
+		dst := h.Sum(nil)
+		cookie := http.Cookie{Name: "user_id", Value: string(dst)}
+		http.SetCookie(w, &cookie)
 
 		// If request was compressed
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {

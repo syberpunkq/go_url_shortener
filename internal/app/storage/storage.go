@@ -10,12 +10,13 @@ import (
 )
 
 type Entity struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	UserId string `json:"user_id"`
 }
 
 type Storage struct {
-	dict            map[string]string
+	dict            []map[string]string
 	currentIndex    int
 	mutex           *sync.RWMutex
 	fileStoragePath string
@@ -23,7 +24,7 @@ type Storage struct {
 
 func NewStorage() *Storage {
 	return &Storage{
-		dict:            make(map[string]string),
+		dict:            make([]map[string]string, 0),
 		currentIndex:    1,
 		mutex:           &sync.RWMutex{},
 		fileStoragePath: "",
@@ -46,7 +47,11 @@ func FileStorage(fileStoragePath string) (*Storage, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		stor.dict[e.Key] = e.Value
+		stor.dict = append(stor.dict, map[string]string{
+			"key":     e.Key,
+			"value":   e.Value,
+			"user_id": e.UserId,
+		})
 	}
 
 	stor.fileStoragePath = fileStoragePath
